@@ -21,7 +21,7 @@ import MenuItem from '@mui/material/MenuItem';
 
 const BasicTable: FC<{ data: ICustomers[] }> = ({ data }) => {
   const [page, setPage] = React.useState(1)
-  const handleChange = (event: React.ChangeEvent<unknown>, value: number) => {
+  const handleChange = (_: React.ChangeEvent<unknown>, value: number) => {
     setPage(value)
   }
 
