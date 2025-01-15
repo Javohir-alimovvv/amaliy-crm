@@ -19,11 +19,18 @@ import { Button } from '@mui/material'
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 
-const BasicTable: FC<{ data: ICustomers[] }> = ({ data }) => {
-  const [page, setPage] = React.useState(1)
-  const handleChange = (_: React.ChangeEvent<unknown>, value: number) => {
-    setPage(value)
-  }
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { request } from '@/api'
+
+import FormControl from '@mui/joy/FormControl';
+import FormLabel from '@mui/joy/FormLabel';
+import Input from '@mui/joy/Input';
+import Modal from '@mui/joy/Modal';
+import ModalDialog from '@mui/joy/ModalDialog';
+import DialogTitle from '@mui/joy/DialogTitle';
+
+const BasicTable: FC<{ data: ICustomers[], type: string }> = ({ data, type }) => {
+
 
   const [id, setId] = React.useState<null | string>(null)
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
@@ -35,8 +42,62 @@ const BasicTable: FC<{ data: ICustomers[] }> = ({ data }) => {
   };
   const handleClose = () => {
     setAnchorEl(null);
+    setId(null)
   };
 
+  // PIN
+
+
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation({
+    mutationFn: ({ id, pin }: { id: string, pin: boolean }) => request
+      .patch(`update/${type}/${id}`, { pin: !pin })
+      .then(res => res)
+      .catch(err => err),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [type] })
+      handleClose()
+    },
+  })
+
+  const handlePin = (id: string, pin: boolean) => {
+    mutation.mutate({ id, pin })
+  }
+
+  // AMOUNT
+  const mutationAmount = useMutation({
+    mutationFn: () => request
+    .post(`/create/payment`)
+    .then(res => res)
+    .catch(err => console.log(err)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+    },
+  })
+  
+
+  // const handlePayment = (id: string, budget: number) => {
+  //   setModalOpen(true)
+  // }
+
+  const [formData, setFormData] = React.useState({
+    _id: 0,
+    fname: "",
+    lname: "",
+    phone_primary: "",
+    budget: 0,
+    address: ""
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    console.log(formData);
+    setModalOpen(false)
+  }
+
+
+  const [modalOpen, setModalOpen] = React.useState(false);
   return (
     <div className='flex flex-col items-center gap-10'>
       <TableContainer component={Paper}>
@@ -83,8 +144,29 @@ const BasicTable: FC<{ data: ICustomers[] }> = ({ data }) => {
                         'aria-labelledby': 'basic-button',
                       }}
                     >
-                      <MenuItem onClick={handleClose}>{row.pin === true ? "Un Pin" : "Pin"}</MenuItem>
-                      <MenuItem onClick={handleClose}>Payment</MenuItem>
+                      <MenuItem onClick={() => handlePin(row._id, row.pin)}>{row.pin === true ? "Un Pin" : "Pin"}</MenuItem>
+                      <MenuItem onClick={() => setModalOpen(true)}>Payment</MenuItem>
+                      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
+                        <ModalDialog>
+                          <DialogTitle>Payment is being made to {row.fname}</DialogTitle>
+                          <form onSubmit={handleSubmit}>
+                            <Stack spacing={2}>
+                              <FormControl>
+                                <FormLabel>Enter the amount</FormLabel>
+                                <Input
+                                  onChange={(e) => setFormData((prev) => ({
+                                    ...prev,
+                                    budget: Number(e.target.value)
+                                  }))}
+                                  autoFocus
+                                  required
+                                />
+                              </FormControl>
+                              <Button type="submit">Add</Button>
+                            </Stack>
+                          </form>
+                        </ModalDialog>
+                      </Modal>
                     </Menu>
                   }
                 </TableCell>
@@ -94,9 +176,7 @@ const BasicTable: FC<{ data: ICustomers[] }> = ({ data }) => {
         </Table>
       </TableContainer>
 
-      <Stack spacing={2}>
-        <Pagination count={10} page={page} onChange={handleChange} />
-      </Stack>
+      
     </div >
   )
 }
